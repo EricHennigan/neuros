@@ -26,10 +26,10 @@ neuros/
 
 ### Phase 1: Board Interface
 1. [ ] Basic BoardInterface class with synthetic board
-    - Code: Not started
-    - Tests: Not started
-    - PR: Not created
-    - Status: Planned
+    - Code: Done
+    - Tests: Done
+    - PR: Doing
+    - Status: Pending review
 
 2. [ ] Add channel configuration
     - Code: Not started
