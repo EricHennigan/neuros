@@ -32,10 +32,10 @@ neuros/
     - Status: Pending review
 
 2. [ ] Add channel configuration
-    - Code: Not started
-    - Tests: Not started
-    - PR: Not created
-    - Status: Planned
+    - Code: Done
+    - Tests: Done
+    - PR: Doing
+    - Status: Pending review
 
 3. [ ] Implement data window functionality
     - Code: Not started
