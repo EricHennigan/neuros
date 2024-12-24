@@ -124,7 +124,7 @@ def stream_windows(board: BoardShim, config: WindowConfig) -> Iterator[np.ndarra
 
 def main() -> None:
     """Example usage with enhanced visualization"""
-    config = WindowConfig(window_ms=100.0, overlap_ms=60.0)
+    config = WindowConfig(window_ms=550.0, overlap_ms=225.0)
 
     try:
         with board_stream(board_id=BoardIds.SYNTHETIC_BOARD) as board:
@@ -149,4 +149,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-    # data_continuity_test()
