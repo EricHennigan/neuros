@@ -122,5 +122,20 @@ def test_eeg_channel_count():
         assert window.shape[0] == 16  # Total number of eeg channels for synthetic board
 
 
+def test_ring_buffer_shift():
+    # Create a known pattern in the ring buffer
+    ring_buffer = np.array([[1, 2, 3, 4, 5, 6]])  # Single channel for simplicity
+    new_data = np.array([[7, 8, 9]])
+    new_samples = 3
+
+    # Perform the shift
+    ring_buffer[:, :-new_samples] = ring_buffer[:, new_samples:]
+    ring_buffer[:, -new_samples:] = new_data
+
+    # Check if data shifted correctly
+    expected = np.array([[4, 5, 6, 7, 8, 9]])
+    np.testing.assert_array_equal(ring_buffer, expected)
+
+
 if __name__ == "__main__":
     pytest.main(["-v", __file__])

@@ -1,4 +1,5 @@
 import logging
+import time
 from dataclasses import dataclass
 from typing import Iterator, Optional
 import numpy as np
@@ -6,7 +7,7 @@ from contextlib import contextmanager
 from brainflow.board_shim import BoardShim, BrainFlowInputParams, BoardIds
 
 logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("main.py")
 
 
 @dataclass(frozen=True)
@@ -14,6 +15,15 @@ class WindowConfig:
     """Configuration for data windowing"""
     window_ms: float  # Window size in milliseconds
     overlap_ms: float = 0.0  # Overlap between windows
+
+    def __post_init__(self):
+        """Validate configuration after initialization"""
+        if self.window_ms <= 0:
+            raise ValueError("Window size must be positive")
+        if self.overlap_ms >= self.window_ms:
+            raise ValueError("Overlap must be less than window size")
+        if self.overlap_ms < 0:
+            raise ValueError("Overlap must be non-negative")
 
     def to_samples(self, sample_rate: int) -> tuple[int, int]:
         """Convert time-based config to sample counts"""
@@ -58,34 +68,51 @@ def board_stream(board_id: int = BoardIds.SYNTHETIC_BOARD,
 
 
 def stream_windows(board: BoardShim, config: WindowConfig) -> Iterator[np.ndarray]:
+    """
+    Generate windows of EEG data from board stream.
+
+    This generator yields windows of data continuously from the board stream.
+    Each window contains data from all EEG channels and can overlap with previous windows.
+
+    Args:
+        board: Connected and streaming BoardShim instance
+        config: Window configuration for size and overlap
+
+    Yields:
+        Windows of data as numpy arrays with shape (channels, samples)
+    """
+    # Convert ms-based config to samples
     sample_rate = board.get_sampling_rate(board_id=board.board_id)
     window_samples, overlap_samples = config.to_samples(sample_rate)
-    new_samples = window_samples - overlap_samples
+    needed = window_samples - overlap_samples
 
-    # Get the EEG channel indices
+    # Get EEG channel information
     eeg_channels = board.get_eeg_channels(board_id=board.board_id)
 
-    # Create buffer just for EEG channels
-    ring_buffer = np.zeros((len(eeg_channels), window_samples), dtype=np.float32)
-    filled_samples = 0
+    # Initialize empty aggregator for all EEG data
+    aggregator = np.zeros((len(eeg_channels), 0), dtype=np.float32)
 
     try:
         while True:
             try:
-                new_data = board.get_current_board_data(new_samples)
-                if new_data.size == 0 or new_data.shape[1] != new_samples:
-                    continue  # Skip if we don't have enough samples yet, e.g. at start
+                # Get a large chunk of data - board will return what it has
+                new_data = board.get_current_board_data(1024)
+                if new_data.size == 0:
+                    continue
 
-                # Extract just the EEG channels from the new data
+                # Extract EEG channels and add to aggregator
                 eeg_data = new_data[eeg_channels]
+                aggregator = np.concatenate([aggregator, eeg_data], axis=1)
 
-                ring_buffer[:, :-new_samples] = ring_buffer[:, new_samples:]
-                ring_buffer[:, -new_samples:] = eeg_data
+                # Generate windows while we have enough data
+                while aggregator.shape[1] >= window_samples:
+                    # Create the next window
+                    window = aggregator[:, :window_samples].copy()
 
-                filled_samples += new_data.shape[1]
+                    # Remove processed data, keeping overlap if needed
+                    aggregator = aggregator[:, needed:]
 
-                if filled_samples >= window_samples:
-                    yield ring_buffer.copy()
+                    yield window
 
             except Exception as e:
                 logger.error(f"Error getting board data: {e}")
@@ -96,16 +123,22 @@ def stream_windows(board: BoardShim, config: WindowConfig) -> Iterator[np.ndarra
 
 
 def main() -> None:
-    """Example usage"""
-    config = WindowConfig(window_ms=500.0, overlap_ms=250.0)
+    """Example usage with enhanced visualization"""
+    config = WindowConfig(window_ms=100.0, overlap_ms=60.0)
 
     try:
-        with board_stream() as board:
-            logger.info(f"Board ready - sample rate: {board.get_sampling_rate(board_id=BoardIds.SYNTHETIC_BOARD)} Hz")
+        with board_stream(board_id=BoardIds.SYNTHETIC_BOARD) as board:
+            sample_rate = board.get_sampling_rate(board_id=board.board_id)
+            logger.info(f"Board ready - sample rate: {sample_rate} Hz")
             logger.info("Press Ctrl+C to stop...")
 
             for window in stream_windows(board, config):
-                print(f"Got window shape: {window.shape}")
+                # Get data just for first 3 channels
+                window = window[:3]
+                logger.debug(f"Window shape: {window.shape}")
+
+                # Small delay to prevent CPU overload
+                time.sleep(0.01)
 
     except KeyboardInterrupt:
         logger.info("\nStopped by user")
@@ -116,3 +149,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+    # data_continuity_test()
