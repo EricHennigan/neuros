@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from neuros.main import WindowConfig, stream_windows, board_stream
+from neuros.main import WindowConfig, stream_windows, create_board_stream
 
 
 def test_window_config_creation():
@@ -39,7 +39,7 @@ def test_sample_conversion():
     sample_rate = 250  # Hz
 
     # When: Converting to samples
-    window_samples, overlap_samples = config.to_samples(sample_rate)
+    window_samples, overlap_samples = config.convert_to_samples(sample_rate)
 
     # Then: Sample counts should match expected values
     assert window_samples == 125, "500ms at 250Hz should be 125 samples"
@@ -51,7 +51,7 @@ def test_window_generation():
     # Given: A standard window configuration
     config = WindowConfig(window_ms=500.0, overlap_ms=250.0)
 
-    with board_stream() as board:
+    with create_board_stream() as board:
         # When: Generating windows
         generator = stream_windows(board, config)
         window = next(generator)
@@ -71,7 +71,7 @@ def test_window_overlap():
     # Given: A configuration with 50% overlap
     config = WindowConfig(window_ms=500.0, overlap_ms=250.0)
 
-    with board_stream() as board:
+    with create_board_stream() as board:
         generator = stream_windows(board, config)
 
         # When: Generating consecutive windows
@@ -95,7 +95,7 @@ def test_data_continuity():
     # Given: A standard configuration
     config = WindowConfig(window_ms=500.0, overlap_ms=250.0)
 
-    with board_stream() as board:
+    with create_board_stream() as board:
         generator = stream_windows(board, config)
 
         # When: Collecting multiple windows
@@ -121,7 +121,7 @@ def test_window_params_no_common_factors():
     # 167ms at 250Hz = 41.75 samples -> 41 samples
     config = WindowConfig(window_ms=431.0, overlap_ms=167.0)
 
-    with board_stream() as board:
+    with create_board_stream() as board:
         # When: Generating windows
         generator = stream_windows(board, config)
         window = next(generator)
@@ -157,7 +157,7 @@ def test_error_handling():
     # Given: A running board stream
     config = WindowConfig(window_ms=500.0, overlap_ms=250.0)
 
-    with board_stream() as board:
+    with create_board_stream() as board:
         generator = stream_windows(board, config)
 
         # Initially verify normal operation
@@ -190,7 +190,7 @@ def test_startup_behavior():
     # Given: A window configuration requiring multiple chunks
     config = WindowConfig(window_ms=1000.0, overlap_ms=0.0)
 
-    with board_stream() as board:
+    with create_board_stream() as board:
         generator = stream_windows(board, config)
 
         # When: Requesting first window
@@ -209,7 +209,7 @@ def test_resource_cleanup():
     config = WindowConfig(window_ms=500.0, overlap_ms=250.0)
 
     # When: Using and exiting the board context
-    with board_stream() as board:
+    with create_board_stream() as board:
         generator = stream_windows(board, config)
         _ = next(generator)
         assert board.is_prepared(), "Board should be prepared during use"

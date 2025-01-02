@@ -1,8 +1,8 @@
 import pytest
 import numpy as np
 from brainflow.board_shim import BoardIds
-from neuros.window_stream import WindowConfig, board_stream, stream_windows
-from neuros.process_data import process_window
+from neuros.data_streamer import WindowConfig, create_board_stream, stream_windows
+from neuros.data_processor import process_window
 
 
 def test_synthetic_alpha_ratios():
@@ -13,7 +13,7 @@ def test_synthetic_alpha_ratios():
     """
     config = WindowConfig(window_ms=1000.0)
 
-    with board_stream(BoardIds.SYNTHETIC_BOARD) as board:
+    with create_board_stream(BoardIds.SYNTHETIC_BOARD) as board:
         window = next(stream_windows(board, config))
         metrics = process_window(window[:3], board.get_sampling_rate(board.board_id))
 
@@ -33,7 +33,7 @@ def test_synthetic_power_progression():
     """
     config = WindowConfig(window_ms=1000.0)
 
-    with board_stream(BoardIds.SYNTHETIC_BOARD) as board:
+    with create_board_stream(BoardIds.SYNTHETIC_BOARD) as board:
         window = next(stream_windows(board, config))
         metrics = process_window(window[:3], board.get_sampling_rate(board.board_id))
 
@@ -53,7 +53,7 @@ def test_synthetic_frequency_characteristics():
     """
     config = WindowConfig(window_ms=2000.0)  # Longer window for better frequency resolution
 
-    with board_stream(BoardIds.SYNTHETIC_BOARD) as board:
+    with create_board_stream(BoardIds.SYNTHETIC_BOARD) as board:
         window = next(stream_windows(board, config))
         metrics = process_window(window[:3], board.get_sampling_rate(board.board_id))
 

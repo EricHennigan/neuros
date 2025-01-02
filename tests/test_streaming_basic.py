@@ -2,27 +2,27 @@ import pytest
 import numpy as np
 import time
 from brainflow.board_shim import BoardIds
-from neuros.main import WindowConfig, board_stream, stream_windows
+from neuros.main import WindowConfig, create_board_stream, stream_windows
 
 
 def test_window_config():
     """Test window configuration validation and conversion"""
     # Valid configs
     config = WindowConfig(window_ms=100.0, overlap_ms=50.0)
-    window_samples, overlap_samples = config.to_samples(sample_rate=250)
+    window_samples, overlap_samples = config.convert_to_samples(sample_rate=250)
     assert window_samples == 25  # 100ms * 250Hz / 1000
     assert overlap_samples == 12  # 50ms * 250Hz / 1000
 
     # Invalid overlap
     with pytest.raises(ValueError):
         config = WindowConfig(window_ms=100.0, overlap_ms=100.0)
-        config.to_samples(250)
+        config.convert_to_samples(250)
 
 
 def test_board_context():
     """Test board context manager handles resources properly"""
     # Normal exit
-    with board_stream() as board:
+    with create_board_stream() as board:
         assert board.is_prepared()
         # Brief pause to let board start up
         time.sleep(0.1)
@@ -32,7 +32,7 @@ def test_board_context():
 
     # Exception handling
     with pytest.raises(ValueError):
-        with board_stream() as board:
+        with create_board_stream() as board:
             raise ValueError("Test exception")
     assert not board.is_prepared()
 
@@ -41,7 +41,7 @@ def test_stream_basic():
     """Test basic window streaming functionality"""
     config = WindowConfig(window_ms=200.0)  # 200ms windows, no overlap
 
-    with board_stream() as board:
+    with create_board_stream() as board:
         # Let board generate some data
         time.sleep(0.5)
 
@@ -67,7 +67,7 @@ def test_stream_overlap():
     """Test overlapping windows work correctly"""
     config = WindowConfig(window_ms=100.0, overlap_ms=50.0)
 
-    with board_stream() as board:
+    with create_board_stream() as board:
         # Let board generate some data
         time.sleep(0.5)
 
@@ -92,7 +92,7 @@ def test_stream_empty_board():
     """Test handling of empty data from board"""
     config = WindowConfig(window_ms=100.0)
 
-    with board_stream() as board:
+    with create_board_stream() as board:
         # Try to get windows immediately (board likely has no data yet)
         windows = []
         start_time = time.time()
@@ -111,7 +111,7 @@ def test_eeg_channel_count():
     """Test that we get expected number of channels"""
     config = WindowConfig(window_ms=100.0)
 
-    with board_stream(BoardIds.SYNTHETIC_BOARD) as board:
+    with create_board_stream(BoardIds.SYNTHETIC_BOARD) as board:
         time.sleep(0.5)  # Let board generate data
 
         # Get one window

@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from neuros.process_data import (
+from neuros.data_processor import (
     extract_band_power, extract_all_bands,
     compute_band_ratios, process_window, PowerMetrics
 )
