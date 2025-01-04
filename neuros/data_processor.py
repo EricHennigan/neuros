@@ -1,6 +1,5 @@
 import numpy as np
 from brainflow.data_filter import DataFilter, FilterTypes, DetrendOperations
-from typing import NamedTuple, Dict
 
 
 def extract_band_power(data: np.ndarray, sampling_rate: int,
@@ -17,7 +16,6 @@ def extract_band_power(data: np.ndarray, sampling_rate: int,
     Returns:
         Band power as a float.
     """
-
     filtered = data.copy()
     DataFilter.detrend(filtered, DetrendOperations.CONSTANT.value)
     DataFilter.perform_bandpass(
@@ -32,94 +30,58 @@ def extract_band_power(data: np.ndarray, sampling_rate: int,
     return np.sqrt(np.mean(np.square(filtered)))
 
 
-def extract_all_bands(data: np.ndarray, sampling_rate: int) -> Dict[str, float]:
+def compute_alpha_ratio(data: np.ndarray, sampling_rate: int) -> float:
     """
-    Extract power from all standard EEG frequency bands.
+    Compute the alpha/total power ratio from EEG data.
 
     Args:
-        data: 1D numpy array of samples
-        sampling_rate: Sampling rate in Hz
+        data: 1D numpy array of samples.
+        sampling_rate: Sampling rate in Hz.
 
     Returns:
-        Dictionary of band names to power values
+        Alpha/total power ratio as a float.
     """
-    bands = {
-        'delta': (1, 4),
-        'theta': (4, 8),
-        'alpha': (8, 13),
-        'beta': (13, 30),
-        'gamma': (30, 50),
-        'total': (1, 50)
-    }
-
-    return {
-        name: extract_band_power(data, sampling_rate, low, high)
-        for name, (low, high) in bands.items()
-    }
+    alpha_power = extract_band_power(data, sampling_rate, 8, 13)
+    total_power = extract_band_power(data, sampling_rate, 1, 50)
+    return alpha_power / (total_power + 1e-10)
 
 
-def compute_band_ratios(powers: Dict[str, float]) -> Dict[str, float]:
+def process_channel(data: np.ndarray, sampling_rate: int) -> float:
     """
-    Compute standard ratios between frequency bands.
+    Process a single channel of EEG data to extract the alpha/total power ratio.
 
     Args:
-        powers: Dictionary of band powers from extract_all_bands()
+        data: 1D numpy array of samples.
+        sampling_rate: Sampling rate in Hz.
 
     Returns:
-        Dictionary of ratio names to values
+        Alpha/total power ratio as a float.
     """
-    ratios = {
-        'alpha_theta': ('alpha', 'theta'),
-        'alpha_beta': ('alpha', 'beta'),
-        'theta_beta': ('theta', 'beta'),
-        'alpha_total': ('alpha', 'total')
-    }
-
-    return {
-        name: powers[num] / (powers[den] + 1e-10)
-        for name, (num, den) in ratios.items()
-    }
+    return compute_alpha_ratio(data, sampling_rate)
 
 
-class PowerMetrics(NamedTuple):
-    """Collection of power measurements for a channel"""
-    absolute_alpha: float
-    alpha_ratio: float  # alpha/total
-    alpha_beta_ratio: float
-
-
-def process_channel(data: np.ndarray, sampling_rate: int) -> PowerMetrics:
-    """
-    Process a single channel of EEG data to extract power metrics.
-
-    Args:
-        data: 1D numpy array of samples
-        sampling_rate: Sampling rate in Hz
-
-    Returns:
-        PowerMetrics containing absolute and relative measurements
-    """
-    # Get all band powers
-    powers = extract_all_bands(data, sampling_rate)
-    ratios = compute_band_ratios(powers)
-
-    return PowerMetrics(
-        absolute_alpha=powers['alpha'],
-        alpha_ratio=ratios['alpha_total'],
-        alpha_beta_ratio=ratios['alpha_beta']
-    )
-
-
-def process_window(window: np.ndarray, sampling_rate: int) -> list[PowerMetrics]:
+def process_window(window: np.ndarray, sampling_rate: int) -> list[float]:
     """
     Process a window of multi-channel EEG data.
 
     Args:
-        window: 2D numpy array (channels, samples)
-        sampling_rate: Sampling rate in Hz
+        window: 2D numpy array (channels, samples).
+        sampling_rate: Sampling rate in Hz.
 
     Returns:
-        List of PowerMetrics, one per channel
+        List of alpha/total power ratios, one per channel.
     """
-    return [process_channel(window[i], sampling_rate)
-            for i in range(window.shape[0])]
+    return [process_channel(window[i], sampling_rate) for i in range(window.shape[0])]
+
+
+def map_to_midi(alpha_ratio: float) -> int:
+    """
+    Map alpha/total power ratio (0-1) to MIDI velocity (0-127).
+
+    Args:
+        alpha_ratio: Alpha/total power ratio as a float.
+
+    Returns:
+        MIDI velocity as an integer.
+    """
+    return int(np.clip(alpha_ratio * 127, 0, 127))

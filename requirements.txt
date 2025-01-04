@@ -1,0 +1,3 @@
+numpy~=2.2.1
+brainflow~=5.15.0
+pyfluidsynth~=1.3.4
