@@ -1,8 +1,8 @@
 import pytest
 import numpy as np
 from brainflow.board_shim import BoardIds
-from neuros.window_stream import WindowConfig, board_stream, stream_windows
-from neuros.process_data import process_window
+from neuros.data_streamer import WindowConfig, board_stream, stream_windows
+from neuros.data_processor import process_window
 
 
 def test_synthetic_alpha_ratios():

@@ -1,12 +1,23 @@
 import numpy as np
 from brainflow.data_filter import DataFilter, FilterTypes, DetrendOperations
-from dataclasses import dataclass
 from typing import NamedTuple, Dict
 
 
 def extract_band_power(data: np.ndarray, sampling_rate: int,
                        low_freq: float, high_freq: float) -> float:
-    """Extract power in a specific frequency band from signal"""
+    """
+    Extract band power from EEG data.
+
+    Args:
+        data: 1D numpy array of samples.
+        sampling_rate: Sampling rate in Hz.
+        low_freq: Lower frequency bound.
+        high_freq: Upper frequency bound.
+
+    Returns:
+        Band power as a float.
+    """
+
     filtered = data.copy()
     DataFilter.detrend(filtered, DetrendOperations.CONSTANT.value)
     DataFilter.perform_bandpass(
