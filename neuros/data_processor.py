@@ -73,15 +73,3 @@ def process_window(window: np.ndarray, sampling_rate: int) -> list[float]:
     """
     return [process_channel(window[i], sampling_rate) for i in range(window.shape[0])]
 
-
-def map_to_midi(alpha_ratio: float) -> int:
-    """
-    Map alpha/total power ratio (0-1) to MIDI velocity (0-127).
-
-    Args:
-        alpha_ratio: Alpha/total power ratio as a float.
-
-    Returns:
-        MIDI velocity as an integer.
-    """
-    return int(np.clip(alpha_ratio * 127, 0, 127))
