@@ -1,17 +1,19 @@
+import numpy as np
 from fluidsynth import Synth
 
 
 class ToneGenerator:
     """FluidSynth-based tone generator with continuous tones and adjustable volume."""
 
-    def __init__(self):
+    def __init__(self, notes=None):
         """Initialize FluidSynth with organ sound"""
         self._soundfont_path = "./Aeolus_Soundfont.sf2"
         self._instrument = 0  # Fully Organic Sound
-        self._current_note = 60  # Middle C
 
+        """Initialize with array of MIDI notes, defaults to 8-note scale"""
+        self._notes = notes if notes is not None else [60, 62, 64, 67, 69, 72, 74, 76]  # C major pentatonic (C D E G A C D E)
         self._is_playing = False
-        self._current_velocity = 64  # MIDI velocity aka amplitude
+        self._current_velocities = [64] * len(self._notes)
 
         # Initialize synthesizer
         self.synth = Synth()
@@ -39,31 +41,34 @@ class ToneGenerator:
         if self._is_playing:
             return  # Already playing
 
-        self.synth.noteon(0, self._current_note, self._current_velocity)  # Start note with current velocity
+        for note, velocity in zip(self._notes, self._current_velocities):
+            self.synth.noteon(0, note, velocity)
         self._is_playing = True
 
     def stop(self) -> None:
-        """Stop the tone"""
+        """Stop all notes"""
         if not self._is_playing:
             return  # Already stopped
 
-        self.synth.noteoff(0, self._current_note)  # Stop the note
+        for note in self._notes:
+            self.synth.noteoff(0, note)
         self._is_playing = False
 
-    def set_velocity(self, amplitude: float) -> None:
-        """Set the amplitude of the tone"""
+    def set_velocity(self, amplitudes: np.ndarray) -> None:
+        """Set amplitudes for all notes"""
 
-        # Convert amplitude to MIDI velocity
-        velocity = int(amplitude * 127)
+        if len(amplitudes) != len(self._notes):
+            raise ValueError(f"Expected {len(self._notes)} amplitudes, got {len(amplitudes)}")
 
-        # Clip velocity to valid range
-        velocity = max(0, min(127, velocity))
+        velocities = (amplitudes * 127).astype(int)
+        velocities = np.clip(velocities, 0, 127)
 
-        if velocity == self._current_velocity:
-            return  # No change in amplitude
+        for i, (velocity, note) in enumerate(zip(velocities, self._notes)):
+            if velocity != self._current_velocities[i]:
+                self.synth.cc(0, 7 + i, velocity)  # Use different CC for each note
+                self._current_velocities[i] = velocity
 
-        self.synth.cc(0, 7, velocity)  # Set channel velocity
-        self._current_velocity = velocity
+
 
     def cleanup(self) -> None:
         """Clean up FluidSynth resources"""

@@ -1,5 +1,7 @@
 import logging
 import time
+
+import numpy as np
 from brainflow.board_shim import BoardIds
 from neuros.eeg_reader import WindowConfig, create_board_stream, stream_windows, Band, compute_power
 from neuros.tone_generator import ToneGenerator
@@ -11,7 +13,7 @@ logger = logging.getLogger(__name__)
 def main() -> None:
     """Example usage demonstrating window streaming with synthetic board"""
     config = WindowConfig(window_ms=550.0, overlap_ms=225.0)
-    max_alpha_ratio = 0.0  # Only one channel, one ratio for MVP
+    max_alpha_ratios = np.zeros(8)  # Track max for each channel
     windows_to_skip = 500  # Number of windows to skip, to allow for stabilization
     cpu_delay = 0.005  # Small delay between iterations to prevent CPU overload
     tone = ToneGenerator()
@@ -29,20 +31,21 @@ def main() -> None:
                 next(window_iterator)
 
             for window in window_iterator:
-                # Get data just for first channel
-                channel_1 = window[0]
-                alpha_power = compute_power(channel_1, sample_rate, Band.ALPHA)
-                total_power = compute_power(channel_1, sample_rate, Band.ALL)
-                alpha_ratio = alpha_power / (total_power + 1e-10)
+                channels = window[:8]
+                alpha_powers = compute_power(channels, sample_rate, Band.ALPHA)
+                total_powers = compute_power(channels, sample_rate, Band.ALL)
+                alpha_ratios = alpha_powers / (total_powers + 1e-10)
 
-                # Update the maximum alpha_ratio
-                if alpha_ratio > max_alpha_ratio:
-                    logger.info(f"New real max alpha ratio: {alpha_ratio:.2f}")
-                    max_alpha_ratio = alpha_ratio
+                # Update maximum ratios per channel
+                new_maxes = alpha_ratios > max_alpha_ratios
+                if np.any(new_maxes):
+                    max_alpha_ratios[new_maxes] = alpha_ratios[new_maxes]
+                    logger.info(f"New max alpha ratios: {max_alpha_ratios}")
 
-                normalized_alpha_ratio = alpha_ratio / max_alpha_ratio
-                logger.info(f"Normalized alpha ratio: {normalized_alpha_ratio:.2f}")
-                tone.set_velocity(normalized_alpha_ratio)
+                # Normalize each channel by its own maximum
+                normalized_alpha_ratios = alpha_ratios / (max_alpha_ratios + 1e-10)
+                logger.info(f"Normalized alpha ratios: {normalized_alpha_ratios}")
+                tone.set_velocity(normalized_alpha_ratios)
 
                 # Small delay to prevent CPU overload
                 time.sleep(cpu_delay)

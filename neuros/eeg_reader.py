@@ -119,28 +119,39 @@ def stream_windows(board: BoardShim, config: WindowConfig) -> Iterator[np.ndarra
         logger.info("Stopping window streaming")
 
 
-def compute_power(channel_data: np.ndarray, sampling_rate: int, band: Band) -> float:
+def compute_power(channel_data: np.ndarray, sampling_rate: int, band: Band) -> np.ndarray:
     """
-    Extract band power from EEG data.
+    Extract band power from EEG data for one or more channels.
 
     Args:
-        channel_data: 1D numpy array of samples.
+        channel_data: 2D numpy array of samples. Channels are on first axis.
         sampling_rate: Sampling rate in Hz.
         band: Brain wave band.
 
     Returns:
-        Band power as a float.
+        Band power as numpy array (2D input).
     """
     low_freq, high_freq = band.value
     filtered = channel_data.copy()
-    DataFilter.detrend(filtered, DetrendOperations.CONSTANT.value)
-    DataFilter.perform_bandpass(
-        filtered,
-        sampling_rate,
-        low_freq,
-        high_freq,
-        4,
-        FilterTypes.BUTTERWORTH.value,
-        0
-    )
-    return np.sqrt(np.mean(np.square(filtered)))
+
+    # Handle both single channel and multi-channel cases
+    if filtered.ndim == 1:
+        filtered = filtered.reshape(1, -1)
+
+    # Apply filtering to each channel
+    for i in range(filtered.shape[0]):
+        DataFilter.detrend(filtered[i], DetrendOperations.CONSTANT.value)
+        DataFilter.perform_bandpass(
+            filtered[i],
+            sampling_rate,
+            low_freq,
+            high_freq,
+            4,
+            FilterTypes.BUTTERWORTH.value,
+            0
+        )
+
+    # Compute power across all channels
+    powers = np.sqrt(np.mean(np.square(filtered), axis=1))
+
+    return powers
