@@ -1,4 +1,0 @@
-numpy~=2.2.2
-brainflow~=5.16.0
-pyfluidsynth~=1.3.4
-pytest
