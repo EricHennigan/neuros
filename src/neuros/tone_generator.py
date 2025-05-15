@@ -1,13 +1,13 @@
 import numpy as np
 from fluidsynth import Synth
-
+from importlib.resources import files
 
 class ToneGenerator:
     """FluidSynth-based tone generator with continuous tones and adjustable volume."""
 
     def __init__(self, notes=None):
         """Initialize FluidSynth with organ sound"""
-        self._soundfont_path = "./Aeolus_Soundfont.sf2"
+        self._soundfont_fname = files('neuros.data').joinpath('Aeolus_Soundfont.sf2')
         self._instrument = 0  # Fully Organic Sound
 
         """Initialize with array of MIDI notes, defaults to 8-note scale"""
@@ -23,9 +23,9 @@ class ToneGenerator:
         self.synth.setting("audio.driver", "pulseaudio")
 
         # Load soundfont and set up organ
-        self.sfid = self.synth.sfload(self._soundfont_path)
+        self.sfid = self.synth.sfload(str(self._soundfont_fname))
         if self.sfid == -1:
-            raise RuntimeError(f"Failed to load soundfont: {self._soundfont_path}")
+            raise RuntimeError(f"Failed to load soundfont: {self._soundfont_fname}")
         self.synth.sfont_select(0, self.sfid)
         self.synth.program_select(0, self.sfid, 0, self._instrument)
 
