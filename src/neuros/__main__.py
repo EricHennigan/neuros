@@ -4,7 +4,8 @@ import threading
 
 import numpy as np
 from brainflow.board_shim import BoardIds, BoardShim, BrainFlowInputParams
-from neuros.eeg_reader import WindowConfig, create_board_stream, stream_windows, Band, compute_power, WindowParams, raw_data
+from neuros.neuroboard import BoardReader, BoardReaderParams
+from neuros.eeg_reader import WindowConfig, create_board_stream, stream_windows, Band, compute_power
 from neuros.tone_generator import ToneGenerator
 
 logging.basicConfig(level=logging.INFO)
@@ -61,18 +62,20 @@ def old_main() -> None:
 
 
 def main() -> None:
-    board_id = BoardIds.SYNTHETIC_BOARD
-    board = BoardShim(board_id, BrainFlowInputParams())
+    params = BoardReaderParams(board_id=BoardIds.SYNTHETIC_BOARD)
+    board = BoardReader(params)
 
     # start a background thread to grab the board data
-    params = WindowParams()
-    data_thread = threading.Thread(target=raw_data, args=(board,params))
-    data_thread.start()
+    board.start_reading()
+    count = 5
+    while count:
+        time.sleep(1)
+        print(np.average(board.data[:,3]))
+        #print(board.data[:,:])
+        count -= 1
+    board.stop_reading()
 
     # TODO: start threads to produce audio
-
-    # exit on interrupt
-    data_thread.join()
 
 
 if __name__ == "__main__":

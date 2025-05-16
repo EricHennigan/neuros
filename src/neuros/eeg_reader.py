@@ -26,49 +26,6 @@ class Band(Enum):
 
 
 @dataclass(frozen=True)
-class WindowParams:
-    """
-    Configuration parameters for the thread that grabs raw data from the BCI board
-    """
-    window: timedelta = timedelta(seconds=0.5) # Window size
-    polling: timedelta = timedelta(milliseconds=50) # Time interval between polls
-    stop_event: threading.Event = None
-
-    def __post_init__(self) -> None:
-        """Validate configuration."""
-        object.__setattr__(self, 'stop_event', threading.Event())
-        if self.window <= timedelta(0):
-            raise ValueError("Window duration must be positive")
-        if self.window <= self.polling:
-            raise ValueError("Polling interval must be less than the window duration")
-        if self.polling < timedelta(0):
-            raise ValueError("Polling duration must be positive")
-
-
-def raw_data(board: BoardShim, params: WindowParams) -> None:
-    """
-    Run this function in a thread to poll data from the board.
-    """
-    num_channels = board.get_num_rows(board.board_id)
-    samples_per_sec = board.get_sampling_rate(board.board_id)
-    num_samples = int(samples_per_sec * params.window.total_seconds()) + 1
-
-    board._data = np.zeros(shape=(num_samples, num_channels))
-    board._data_params = params
-
-    board.prepare_session()
-    board.start_stream()
-    while not params.stop_event.is_set():
-        time.sleep(params.polling.total_seconds())
-        data = board.get_board_data()
-        data = np.transpose(data)
-        board._data = np.append(board._data, data, axis=0)[-num_samples:]
-
-    board.stop_stream()
-    board.release_session()
-
-
-@dataclass(frozen=True)
 class WindowConfig:
     """
     Configuration for EEG windowing.
