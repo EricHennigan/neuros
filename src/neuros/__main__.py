@@ -1,16 +1,17 @@
 import logging
 import time
+import threading
 
 import numpy as np
-from brainflow.board_shim import BoardIds
-from neuros.eeg_reader import WindowConfig, create_board_stream, stream_windows, Band, compute_power
+from brainflow.board_shim import BoardIds, BoardShim, BrainFlowInputParams
+from neuros.eeg_reader import WindowConfig, create_board_stream, stream_windows, Band, compute_power, WindowParams, raw_data
 from neuros.tone_generator import ToneGenerator
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def main() -> None:
+def old_main() -> None:
     """Example usage demonstrating window streaming with synthetic board"""
     config = WindowConfig(window_ms=550.0, overlap_ms=225.0)
     max_alpha_ratios = np.zeros(8)  # Track max for each channel
@@ -57,6 +58,21 @@ def main() -> None:
         raise
     finally:
         tone.cleanup()
+
+
+def main() -> None:
+    board_id = BoardIds.SYNTHETIC_BOARD
+    board = BoardShim(board_id, BrainFlowInputParams())
+
+    # start a background thread to grab the board data
+    params = WindowParams()
+    data_thread = threading.Thread(target=raw_data, args=(board,params))
+    data_thread.start()
+
+    # TODO: start threads to produce audio
+
+    # exit on interrupt
+    data_thread.join()
 
 
 if __name__ == "__main__":

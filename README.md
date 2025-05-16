@@ -10,3 +10,8 @@ pip install .
 ```bash
 python -m build --sdist
 ```
+
+# Test
+```bash
+python -m pytest tests/
+```
