@@ -67,13 +67,21 @@ def main() -> None:
 
     # start a background thread to grab the board data
     board.start_reading()
-    count = 5
+    count = 1
     while count:
         time.sleep(1)
-        print(np.average(board.data[:,3]))
+        print(np.average(board.rdata[:,3]))
         #print(board.data[:,:])
         count -= 1
     board.stop_reading()
+
+    channels = board.get_eeg_channels(board.board_id)
+    print('shape', board.rdata.shape)
+    print(board.rdata[:, channels].shape)
+    print('chans', board.get_board_descr(board.board_id)['eeg_channels'])
+
+    d = board.get_eeg_power()
+    print(d)
 
     # TODO: start threads to produce audio
 
